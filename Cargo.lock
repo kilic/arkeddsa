@@ -255,6 +255,7 @@ dependencies = [
  "ark-std",
  "blake2",
  "digest",
+ "hex",
  "rand",
  "rand_core",
  "sha2",

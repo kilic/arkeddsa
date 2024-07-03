@@ -29,6 +29,14 @@ impl SecretKey {
         let x = prune_buffer(buffer);
         (x, hash_prefix)
     }
+
+    pub fn to_bytes(&self) -> [u8; 32] {
+        self.0
+    }
+
+    pub fn from_bytes(bytes: [u8; 32]) -> Self {
+        Self(bytes)
+    }
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -36,6 +44,15 @@ impl SecretKey {
 pub struct PublicKey<A: AffineRepr>(A)
 where
     A::Config: TECurveConfig;
+
+impl<A: AffineRepr> PublicKey<A>
+where
+    A::Config: TECurveConfig,
+{
+    pub fn xy(&self) -> (&A::BaseField, &A::BaseField) {
+        self.0.xy().unwrap()
+    }
+}
 
 #[derive(Copy, Clone, Debug)]
 /// `SigningKey` produces EdDSA signatures for given message
@@ -73,8 +90,8 @@ where
         Self::new::<D>(&secret_key)
     }
 
-    pub fn public_key(&self) -> PublicKey<A> {
-        self.public_key
+    pub fn public_key(&self) -> &PublicKey<A> {
+        &self.public_key
     }
 
     pub fn sign<D: Digest, E: Absorb>(
