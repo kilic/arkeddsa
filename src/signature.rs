@@ -5,12 +5,12 @@ use ark_serialize::CanonicalSerialize;
 
 #[derive(Clone, Copy, Debug)]
 /// `SignatureComponents` contains the realized parts of a signature
-pub struct Signature<TE: TECurveConfig> {
+pub struct Signature<TE: TECurveConfig + Clone> {
     r: Affine<TE>,
     s: TE::ScalarField,
 }
 
-impl<TE: TECurveConfig> Signature<TE> {
+impl<TE: TECurveConfig + Clone> Signature<TE> {
     /// Serializes the signature components to bytes as uncompressed.
     /// Expect output size to be `size_of(TE::BaseField) * 2 + size_of(TE::ScalarField)`
     pub fn to_bytes(&self) -> Vec<u8> {

@@ -56,7 +56,7 @@ mod test {
         PoseidonConfig::new(full_rounds, partial_rounds, 5, mds, ark, rate, 1)
     }
 
-    fn run_test<TE: TECurveConfig, D: Digest>()
+    fn run_test<TE: TECurveConfig + Clone, D: Digest>()
     where
         TE::BaseField: Absorb + PrimeField,
     {

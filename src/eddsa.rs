@@ -75,7 +75,7 @@ pub struct SigningKey<TE: TECurveConfig> {
     public_key: PublicKey<TE>,
 }
 
-impl<TE: TECurveConfig> SigningKey<TE>
+impl<TE: TECurveConfig + Clone> SigningKey<TE>
 where
     TE::BaseField: PrimeField + Absorb,
 {
@@ -138,7 +138,7 @@ where
     }
 }
 
-impl<TE: TECurveConfig> PublicKey<TE>
+impl<TE: TECurveConfig + Clone> PublicKey<TE>
 where
     TE::BaseField: PrimeField + Absorb,
 {
