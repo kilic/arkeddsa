@@ -8,6 +8,7 @@ use ark_ec::{
     AffineRepr,
 };
 use ark_ff::PrimeField;
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use digest::Digest;
 use digest::OutputSizeUser;
 use rand_core::CryptoRngCore;
@@ -42,15 +43,11 @@ impl SecretKey {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
 /// `PublicKey` is EdDSA signature verification key
+#[derive(Copy, Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct PublicKey<TE: TECurveConfig>(Affine<TE>);
 
 impl<TE: TECurveConfig> PublicKey<TE> {
-    pub fn point(&self) -> &Affine<TE> {
-        &self.0
-    }
-
     pub fn xy(&self) -> (&TE::BaseField, &TE::BaseField) {
         self.as_ref().xy().unwrap()
     }
@@ -92,6 +89,11 @@ where
         };
 
         Ok(signing_key)
+    }
+
+    pub fn from_bytes<D: Digest>(bytes: [u8; 32]) -> Result<Self, Error> {
+        let secret_key = SecretKey::from_bytes(bytes);
+        Self::new::<D>(&secret_key)
     }
 
     pub fn generate<D: Digest>(rng: &mut impl CryptoRngCore) -> Result<Self, Error> {

@@ -3,8 +3,8 @@ use ark_ec::twisted_edwards::TECurveConfig;
 use ark_serialize::CanonicalDeserialize;
 use ark_serialize::CanonicalSerialize;
 
-#[derive(Clone, Copy, Debug)]
 /// `SignatureComponents` contains the realized parts of a signature
+#[derive(Copy, Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct Signature<TE: TECurveConfig + Clone> {
     r: Affine<TE>,
     s: TE::ScalarField,
