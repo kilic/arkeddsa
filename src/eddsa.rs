@@ -140,6 +140,16 @@ where
     }
 }
 
+impl<TE: TECurveConfig> SigningKey<TE> {
+    pub fn shared_key<D: Digest>(&self, recipient: &PublicKey<TE>) -> [u8; 32] {
+        let (x, _) = self.secret_key.expand::<TE::ScalarField, D>();
+        let shared_key: Affine<TE> = (*recipient.as_ref() * x).into();
+        let mut data = Vec::new();
+        shared_key.serialize_compressed(&mut data).unwrap();
+        data[00..32].try_into().unwrap()
+    }
+}
+
 impl<TE: TECurveConfig + Clone> PublicKey<TE>
 where
     TE::BaseField: PrimeField + Absorb,
