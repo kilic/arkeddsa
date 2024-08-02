@@ -38,8 +38,8 @@ impl SecretKey {
         self.0
     }
 
-    pub fn from_bytes(bytes: [u8; 32]) -> Self {
-        Self(bytes)
+    pub fn from_bytes(bytes: &[u8; 32]) -> Self {
+        Self(bytes.clone())
     }
 }
 
@@ -91,9 +91,13 @@ where
         Ok(signing_key)
     }
 
-    pub fn from_bytes<D: Digest>(bytes: [u8; 32]) -> Result<Self, Error> {
+    pub fn from_bytes<D: Digest>(bytes: &[u8; 32]) -> Result<Self, Error> {
         let secret_key = SecretKey::from_bytes(bytes);
         Self::new::<D>(&secret_key)
+    }
+
+    pub fn to_bytes(&self) -> [u8; 32] {
+        self.secret_key.to_bytes()
     }
 
     pub fn generate<D: Digest>(rng: &mut impl CryptoRngCore) -> Result<Self, Error> {
