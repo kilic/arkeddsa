@@ -51,6 +51,17 @@ impl<TE: TECurveConfig> PublicKey<TE> {
     pub fn xy(&self) -> (&TE::BaseField, &TE::BaseField) {
         self.as_ref().xy().unwrap()
     }
+
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut bytes = Vec::new();
+        self.serialize_compressed(&mut bytes).unwrap();
+        bytes
+    }
+
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, Box<dyn ark_std::error::Error>> {
+        let point = Affine::<TE>::deserialize_compressed(bytes)?;
+        Ok(Self(point))
+    }
 }
 
 impl<TE: TECurveConfig> From<Affine<TE>> for PublicKey<TE> {
