@@ -2,6 +2,9 @@ pub mod ed_on_bn254_twist;
 pub mod eddsa;
 pub mod signature;
 
+#[cfg(feature = "r1cs")]
+pub mod constraints;
+
 use ark_ff::PrimeField;
 use digest::Digest;
 pub use eddsa::*;
@@ -60,14 +63,13 @@ mod test {
     where
         TE::BaseField: Absorb + PrimeField,
     {
-        let poseidon = poseidon_config(4, 8, 55);
+        let poseidon = poseidon_config::<TE::BaseField>(4, 8, 55);
         let signing_key = SigningKey::<TE>::generate::<D>(&mut OsRng).unwrap();
-        let message = b"xxx yyy <<< zzz >>> bunny";
-        let signature = signing_key.sign::<D, _>(&poseidon, &message[..]);
+        let message_raw = b"xxx yyy <<< zzz >>> bunny";
+        let message = TE::BaseField::from_le_bytes_mod_order(message_raw);
+        let signature = signing_key.sign::<D>(&poseidon, &message);
         let public_key = signing_key.public_key();
-        public_key
-            .verify::<_>(&poseidon, &message[..], &signature)
-            .unwrap();
+        public_key.verify(&poseidon, &message, &signature).unwrap();
     }
 
     #[test]
