@@ -51,18 +51,17 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::ed_on_bn254_twist::{
-        constraints::EdwardsVar as GVar, BaseField as Fq, EdwardsConfig, EdwardsProjective as G,
-        ScalarField as Fr,
-    };
     use ark_ff::PrimeField;
     use ark_r1cs_std::{alloc::AllocVar, eq::EqGadget, fields::nonnative::NonNativeFieldVar};
     use ark_relations::r1cs::ConstraintSystem;
     use rand_core::OsRng;
 
-    use crate::test::poseidon_config;
-    use crate::SigningKey;
+    use super::*;
+    use crate::ed_on_bn254_twist::{
+        constraints::EdwardsVar as GVar, BaseField as Fq, EdwardsConfig, EdwardsProjective as G,
+        ScalarField as Fr,
+    };
+    use crate::{poseidon_config, SigningKey};
 
     #[test]
     fn gadget_verify() {
