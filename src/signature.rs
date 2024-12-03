@@ -6,8 +6,8 @@ use ark_serialize::CanonicalSerialize;
 /// `SignatureComponents` contains the realized parts of a signature
 #[derive(Copy, Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct Signature<TE: TECurveConfig + Clone> {
-    pub r: Affine<TE>,
-    pub s: TE::ScalarField,
+    r: Affine<TE>,
+    s: TE::ScalarField,
 }
 
 impl<TE: TECurveConfig + Clone> Signature<TE> {

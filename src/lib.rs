@@ -19,6 +19,7 @@ pub(crate) fn from_digest<F: PrimeField, D: Digest>(digest: D) -> F {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Error {
+    Coordinates,
     Verify,
     BadDigestOutput,
 }
@@ -26,6 +27,7 @@ pub enum Error {
 impl core::fmt::Display for Error {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         match *self {
+            Error::Coordinates => write!(f, "Could not obtain the coordinates of a point"),
             Error::Verify => write!(f, "Signature verification failed"),
             Error::BadDigestOutput => write!(f, "Bad digest output size"),
         }
@@ -68,7 +70,7 @@ mod test {
         let signing_key = SigningKey::<TE>::generate::<D>(&mut OsRng).unwrap();
         let message_raw = b"xxx yyy <<< zzz >>> bunny";
         let message = TE::BaseField::from_le_bytes_mod_order(message_raw);
-        let signature = signing_key.sign::<D>(&poseidon, &message);
+        let signature = signing_key.sign::<D>(&poseidon, &message).unwrap();
         let public_key = signing_key.public_key();
         public_key.verify(&poseidon, &message, &signature).unwrap();
     }

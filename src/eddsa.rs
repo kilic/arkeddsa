@@ -45,11 +45,11 @@ impl SecretKey {
 
 /// `PublicKey` is EdDSA signature verification key
 #[derive(Copy, Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
-pub struct PublicKey<TE: TECurveConfig>(pub Affine<TE>);
+pub struct PublicKey<TE: TECurveConfig>(Affine<TE>);
 
 impl<TE: TECurveConfig> PublicKey<TE> {
-    pub fn xy(&self) -> (&TE::BaseField, &TE::BaseField) {
-        self.as_ref().xy().unwrap()
+    pub fn xy(&self) -> Result<(&TE::BaseField, &TE::BaseField), Error> {
+        self.as_ref().xy().ok_or(Error::Coordinates)
     }
 
     pub fn to_bytes(&self) -> Vec<u8> {
@@ -125,7 +125,7 @@ where
         &self,
         poseidon: &PoseidonConfig<TE::BaseField>,
         message: &TE::BaseField,
-    ) -> Signature<TE> {
+    ) -> Result<Signature<TE>, Error> {
         let (x, prefix) = self.secret_key.expand::<TE::ScalarField, D>();
 
         let mut h = D::new();
@@ -140,22 +140,22 @@ where
 
         let mut poseidon = PoseidonSponge::new(poseidon);
 
-        let (sig_r_x, sig_r_y) = sig_r.xy().unwrap();
+        let (sig_r_x, sig_r_y) = sig_r.xy().ok_or(Error::Coordinates)?;
         poseidon.absorb(sig_r_x);
         poseidon.absorb(sig_r_y);
-        let (pk_x, pk_y) = self.public_key.0.xy().unwrap();
+        let (pk_x, pk_y) = self.public_key.0.xy().ok_or(Error::Coordinates)?;
         poseidon.absorb(pk_x);
         poseidon.absorb(pk_y);
         poseidon.absorb(message);
 
         // use poseidon over Fq, so that it can be done too in-circuit
         let k = poseidon.squeeze_field_elements::<TE::BaseField>(1);
-        let k = k.first().unwrap();
+        let k = k.first().ok_or(Error::BadDigestOutput)?;
         let k = TE::ScalarField::from_le_bytes_mod_order(&k.into_bigint().to_bytes_le());
 
         let sig_s = (x * k) + r;
 
-        Signature::new(sig_r, sig_s)
+        Ok(Signature::new(sig_r, sig_s))
     }
 }
 
@@ -181,17 +181,17 @@ where
     ) -> Result<(), Error> {
         let mut poseidon = PoseidonSponge::new(poseidon);
 
-        let (sig_r_x, sig_r_y) = signature.r().xy().unwrap();
+        let (sig_r_x, sig_r_y) = signature.r().xy().ok_or(Error::Coordinates)?;
         poseidon.absorb(sig_r_x);
         poseidon.absorb(sig_r_y);
-        let (pk_x, pk_y) = self.0.xy().unwrap();
+        let (pk_x, pk_y) = self.0.xy().ok_or(Error::Coordinates)?;
         poseidon.absorb(pk_x);
         poseidon.absorb(pk_y);
         poseidon.absorb(message);
 
         // use poseidon over Fq, so that it can be done too in-circuit
         let k = poseidon.squeeze_field_elements::<TE::BaseField>(1);
-        let k = k.first().unwrap();
+        let k = k.first().ok_or(Error::BadDigestOutput)?;
 
         let kx_b = self.0.mul_bigint(k.into_bigint());
         let s_b = Affine::<TE>::generator() * signature.s();
