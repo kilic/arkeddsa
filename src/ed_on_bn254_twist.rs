@@ -103,3 +103,18 @@ fn test_twist() {
     let v2 = untwist(u1);
     assert_eq!(v1, v2);
 }
+
+// constraints related logic
+#[cfg(feature = "r1cs")]
+pub mod constraints {
+    use ark_r1cs_std::fields::fp::FpVar;
+    use ark_r1cs_std::groups::curves::twisted_edwards::AffineVar;
+
+    use crate::ed_on_bn254_twist::{BaseField as Fq, EdwardsConfig};
+
+    /// A variable that is the R1CS equivalent of `crate::Fq`.
+    pub type FqVar = FpVar<Fq>;
+
+    /// A variable that is the R1CS equivalent of `crate::EdwardsAffine`.
+    pub type EdwardsVar = AffineVar<EdwardsConfig, FqVar>;
+}

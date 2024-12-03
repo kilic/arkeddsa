@@ -7,7 +7,7 @@ use ark_ec::{
     twisted_edwards::{Affine, TECurveConfig},
     AffineRepr,
 };
-use ark_ff::PrimeField;
+use ark_ff::{BigInteger, PrimeField};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use digest::Digest;
 use digest::OutputSizeUser;
@@ -48,8 +48,8 @@ impl SecretKey {
 pub struct PublicKey<TE: TECurveConfig>(Affine<TE>);
 
 impl<TE: TECurveConfig> PublicKey<TE> {
-    pub fn xy(&self) -> (&TE::BaseField, &TE::BaseField) {
-        self.as_ref().xy().unwrap()
+    pub fn xy(&self) -> Result<(&TE::BaseField, &TE::BaseField), Error> {
+        self.as_ref().xy().ok_or(Error::Coordinates)
     }
 
     pub fn to_bytes(&self) -> Vec<u8> {
@@ -121,37 +121,41 @@ where
         &self.public_key
     }
 
-    pub fn sign<D: Digest, E: Absorb>(
+    pub fn sign<D: Digest>(
         &self,
         poseidon: &PoseidonConfig<TE::BaseField>,
-        message: &[E],
-    ) -> Signature<TE> {
+        message: &TE::BaseField,
+    ) -> Result<Signature<TE>, Error> {
         let (x, prefix) = self.secret_key.expand::<TE::ScalarField, D>();
 
         let mut h = D::new();
         h.update(prefix);
-        message
-            .iter()
-            .for_each(|m| h.update(m.to_sponge_bytes_as_vec()));
+        let msg_bytes = message.into_bigint().to_bytes_le();
+        let mut msg32: [u8; 32] = [0; 32];
+        msg32[..msg_bytes.len()].copy_from_slice(&msg_bytes[..]);
+        h.update(msg32);
+
         let r: TE::ScalarField = crate::from_digest(h);
         let sig_r: Affine<TE> = (Affine::<TE>::generator() * r).into();
 
         let mut poseidon = PoseidonSponge::new(poseidon);
 
-        let (sig_r_x, sig_r_y) = sig_r.xy().unwrap();
+        let (sig_r_x, sig_r_y) = sig_r.xy().ok_or(Error::Coordinates)?;
         poseidon.absorb(sig_r_x);
         poseidon.absorb(sig_r_y);
-        let (pk_x, pk_y) = self.public_key.0.xy().unwrap();
+        let (pk_x, pk_y) = self.public_key.0.xy().ok_or(Error::Coordinates)?;
         poseidon.absorb(pk_x);
         poseidon.absorb(pk_y);
-        message.iter().for_each(|m| poseidon.absorb(m));
+        poseidon.absorb(message);
 
-        let k = poseidon.squeeze_field_elements::<TE::ScalarField>(1);
-        let k = k.first().unwrap();
+        // use poseidon over Fq, so that it can be done too in-circuit
+        let k = poseidon.squeeze_field_elements::<TE::BaseField>(1);
+        let k = k.first().ok_or(Error::BadDigestOutput)?;
+        let k = TE::ScalarField::from_le_bytes_mod_order(&k.into_bigint().to_bytes_le());
 
         let sig_s = (x * k) + r;
 
-        Signature::new(sig_r, sig_s)
+        Ok(Signature::new(sig_r, sig_s))
     }
 }
 
@@ -169,26 +173,27 @@ impl<TE: TECurveConfig + Clone> PublicKey<TE>
 where
     TE::BaseField: PrimeField + Absorb,
 {
-    pub fn verify<E: Absorb>(
+    pub fn verify(
         &self,
         poseidon: &PoseidonConfig<TE::BaseField>,
-        message: &[E],
+        message: &TE::BaseField,
         signature: &Signature<TE>,
     ) -> Result<(), Error> {
         let mut poseidon = PoseidonSponge::new(poseidon);
 
-        let (sig_r_x, sig_r_y) = signature.r().xy().unwrap();
+        let (sig_r_x, sig_r_y) = signature.r().xy().ok_or(Error::Coordinates)?;
         poseidon.absorb(sig_r_x);
         poseidon.absorb(sig_r_y);
-        let (pk_x, pk_y) = self.0.xy().unwrap();
+        let (pk_x, pk_y) = self.0.xy().ok_or(Error::Coordinates)?;
         poseidon.absorb(pk_x);
         poseidon.absorb(pk_y);
-        message.iter().for_each(|m| poseidon.absorb(m));
+        poseidon.absorb(message);
 
-        let k = poseidon.squeeze_field_elements::<TE::ScalarField>(1);
-        let k = k.first().unwrap();
+        // use poseidon over Fq, so that it can be done too in-circuit
+        let k = poseidon.squeeze_field_elements::<TE::BaseField>(1);
+        let k = k.first().ok_or(Error::BadDigestOutput)?;
 
-        let kx_b = self.0 * k;
+        let kx_b = self.0.mul_bigint(k.into_bigint());
         let s_b = Affine::<TE>::generator() * signature.s();
         let r_rec: Affine<TE> = (s_b - kx_b).into();
 
